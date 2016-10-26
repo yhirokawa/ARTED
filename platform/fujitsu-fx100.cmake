@@ -18,6 +18,8 @@ set(CMAKE_C_COMPILER            "mpifccpx")
 set(CMAKE_C_FLAGS_DEBUG         "-O2 -g")
 set(CMAKE_C_FLAGS_RELEASE       "-O3 -Kfast,simd=1")
 
+set(ENABLE_STENCIL_WITH_C         1)
+set(ENABLE_EXPLICIT_VECTORIZATION 1)
 set(ENABLE_REDUCE_FOR_MANYCORE 1)
 
 

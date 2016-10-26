@@ -2,6 +2,10 @@
 ### Compile stencil computation sources
 ###
 
+set(SOURCES
+    C/parameter.c
+    )
+
 ### Soruces for current and total_energy
 set(SOURCES_COMPILER_VEC
     F90/current.f90
@@ -31,15 +35,15 @@ set(SOURCE_HPSI_EXPLICIT_VEC
 if (OPT_STENCIL)
   if (STENCIL_WITH_C)
     if (EXPLICIT_VEC)
-      set(SOURCES ${SOURCE_HPSI_EXPLICIT_VEC})
+      set(SOURCES ${SOURCES} ${SOURCE_HPSI_EXPLICIT_VEC})
     else ()
-      set(SOURCES ${SOURCE_HPSI_C_COMPILER_VEC})
+      set(SOURCES ${SOURCES} ${SOURCE_HPSI_C_COMPILER_VEC})
     endif ()
   else ()
-    set(SOURCES ${SOURCE_HPSI_F90_COMPILER_VEC})
+    set(SOURCES ${SOURCES} ${SOURCE_HPSI_F90_COMPILER_VEC})
   endif ()
 else ()
-  set(SOURCES ${SOURCE_HPSI_ORIGINAL})
+  set(SOURCES ${SOURCES} ${SOURCE_HPSI_ORIGINAL})
 endif ()
 
 if (EXPLICIT_VEC)

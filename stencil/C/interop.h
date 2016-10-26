@@ -16,7 +16,9 @@
 #ifndef ARTED_INTEROP
 #define ARTED_INTEROP
 
-/* Stencil computation code with C supports Intel compiler only. */
+#ifdef __INTEL_COMPILER
+# include <immintrin.h>
+#endif
 
 #if defined(__KNC__) || defined(__AVX512F__)
 # define MEM_ALIGNED 64
@@ -50,24 +52,7 @@
 
 #define MIN(n,m) (n < m ? n : m)
 
-#include <immintrin.h>
 
-#ifdef ARTED_STENCIL_LOOP_BLOCKING
-#define BX   opt_variables_mp_stencil_blocking_x_
-#define BY   opt_variables_mp_stencil_blocking_y_
-#endif
-
-#define NL   global_variables_mp_nl_
-#define NLx  global_variables_mp_nlx_
-#define NLy  global_variables_mp_nly_
-#define NLz  global_variables_mp_nlz_
-#define PNLx opt_variables_mp_pnlx_
-#define PNLy opt_variables_mp_pnly_
-#define PNLz opt_variables_mp_pnlz_
-
-#define modx opt_variables_mp_modx_
-#define mody opt_variables_mp_mody_
-#define modz opt_variables_mp_modz_
 
 #ifdef ARTED_MIGRATE_TO_KNL
 # include "./knc2knl.h"
@@ -133,5 +118,20 @@ __m256d dcast_to_dcmplx(double const *v) {
   return _mm256_shuffle_pd(b, b, 0xC);
 }
 #endif /* defined(__AVX__) && !defined(__AVX512F__) */
+
+
+extern int PNLx, PNLy, PNLz;
+extern int NLx, NLy, NLz;
+
+#ifndef ARTED_DOMAIN_POWER_OF_TWO
+extern int const* modx;
+extern int const* mody;
+extern int const* modz;
+#endif
+
+#ifdef ARTED_STENCIL_LOOP_BLOCKING
+extern int BX, BY;
+#endif
+
 
 #endif /* ARTED_INTEROP */

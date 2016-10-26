@@ -190,6 +190,16 @@ contains
 #ifdef ARTED_STENCIL_LOOP_BLOCKING
     call auto_blocking
 #endif
+
+#ifdef ARTED_EXPLICIT_VECTORIZATION
+    call set_domain_size(NL, NLx, NLy, NLz)
+    call set_padding_domain_size(PNLx, PNLy, PNLz)
+    call set_mod_table(modx, mody, modz)
+
+# ifdef ARTED_STENCIL_LOOP_BLOCKING
+    call set_blocking_factor(STENCIL_BLOCKING_X, STENCIL_BLOCKING_Y)
+# endif
+#endif
   end subroutine
 
   subroutine init_for_padding
