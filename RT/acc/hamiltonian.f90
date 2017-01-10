@@ -13,6 +13,11 @@
 !  See the License for the specific language governing permissions and
 !  limitations under the License.
 !
+
+! ########################
+! Hamiltonian with OpenACC
+! ########################
+
 #define TIMELOG_BEG(id) call timelog_thread_begin(id)
 #define TIMELOG_END(id) call timelog_thread_end(id)
 
@@ -24,104 +29,7 @@
 #define NVTX_END()
 #endif
 
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-#ifndef ARTED_LBLK
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-subroutine dt_evolve_hpsi(flag_current)
-  use Global_Variables
-  use timelog
-  use omp_lib
-  use opt_variables
-  implicit none
-  integer    :: tid
-  integer    :: ikb,ik,ib,i
-  integer    :: iexp
-  complex(8) :: zfac(4)
-  logical, intent(in) :: flag_current
-
-  zfac(1)=(-zI*dt)
-  do i=2,4
-    zfac(i)=zfac(i-1)*(-zI*dt)/i
-  end do
-
-  call timelog_begin(LOG_HPSI)
-
-!$omp parallel private(tid) shared(zfac)
-!$  tid=omp_get_thread_num()
-
-!$omp do private(ik,ib,iexp)
-  do ikb=1,NKB
-    ik=ik_table(ikb)
-    ib=ib_table(ikb)
-
-    call init(ztpsi(:,4,tid),zu(:,ib,ik))
-    call hpsi_omp_KB_RT(ik,ztpsi(:,4,tid),ztpsi(:,1,tid))
-    call hpsi_omp_KB_RT(ik,ztpsi(:,1,tid),ztpsi(:,2,tid))
-    call hpsi_omp_KB_RT(ik,ztpsi(:,2,tid),ztpsi(:,3,tid))
-    call hpsi_omp_KB_RT(ik,ztpsi(:,3,tid),ztpsi(:,4,tid))
-    call update(zfac,ztpsi(:,:,tid),zu(:,ib,ik))
-
-#ifdef ARTED_CURRENT_OPTIMIZED
-    if(flag_current) call current_omp_KB_ST(ib,ik,zu(:,ib,ik))
-#endif
-  end do
-!$omp end do
-!$omp end parallel
-
-  call timelog_end(LOG_HPSI)
-
-contains
-  subroutine init(tpsi,zu)
-    use Global_Variables, only: NLx,NLy,NLz
-    use opt_variables, only: PNLx,PNLy,PNLz
-    use timelog
-    implicit none
-    complex(8) :: tpsi(0:PNLz-1,0:PNLy-1,0:PNLx-1)
-    complex(8) :: zu(0:NLz-1,0:NLy-1,0:NLx-1)
-    integer :: ix,iy,iz
-
-    TIMELOG_BEG(LOG_HPSI_INIT)
-!dir$ vector aligned
-    do ix=0,NLx-1
-    do iy=0,NLy-1
-    do iz=0,NLz-1
-      tpsi(iz,iy,ix)=zu(iz,iy,ix)
-    end do
-    end do
-    end do
-    TIMELOG_END(LOG_HPSI_INIT)
-  end subroutine
-
-  subroutine update(zfac,tpsi,zu)
-    use Global_Variables, only: NLx,NLy,NLz
-    use opt_variables, only: PNLx,PNLy,PNLz
-    use timelog
-    implicit none
-    complex(8) :: zfac(4)
-    complex(8) :: tpsi(0:PNLz-1,0:PNLy-1,0:PNLx-1,4)
-    complex(8) :: zu(0:NLz-1,0:NLy-1,0:NLx-1)
-    integer :: ix,iy,iz
-
-    TIMELOG_BEG(LOG_HPSI_UPDATE)
-!dir$ vector aligned
-    do ix=0,NLx-1
-    do iy=0,NLy-1
-    do iz=0,NLz-1
-      zu(iz,iy,ix)=zu(iz,iy,ix)+zfac(1)*tpsi(iz,iy,ix,1) &
-      &                        +zfac(2)*tpsi(iz,iy,ix,2) &
-      &                        +zfac(3)*tpsi(iz,iy,ix,3) &
-      &                        +zfac(4)*tpsi(iz,iy,ix,4)
-    end do
-    end do
-    end do
-    TIMELOG_END(LOG_HPSI_UPDATE)
-  end subroutine
-end subroutine
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-! ifndef ARTED_LBLK
-#else
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-subroutine dt_evolve_hpsi(flag_current)
+subroutine hamiltonian(flag_current)
   use Global_Variables
   use timelog
 #ifdef ARTED_USE_NVTX
@@ -141,7 +49,7 @@ subroutine dt_evolve_hpsi(flag_current)
     zfac(i)=zfac(i-1)*(-zI*dt)/i
   end do
 
-  ! NVTX_BEG('dt_evolve_hpsi()',2)
+  NVTX_BEG('hamiltonian()',2)
   call timelog_begin(LOG_HPSI)
 
 !$acc data pcopy(zu) create(ztpsi)
@@ -150,12 +58,12 @@ subroutine dt_evolve_hpsi(flag_current)
     ikb_s = ikb0
     ikb_e = ikb0 + num_ikb1-1
 
-    call init_LBLK(ztpsi(:,:,4),zu(:,:,:), ikb_s,ikb_e)
+    call init(ztpsi(:,:,4),zu(:,:,:), ikb_s,ikb_e)
     call hpsi_acc_KB_RT_LBLK(ztpsi(:,:,4),ztpsi(:,:,1), ikb_s,ikb_e)
     call hpsi_acc_KB_RT_LBLK(ztpsi(:,:,1),ztpsi(:,:,2), ikb_s,ikb_e)
     call hpsi_acc_KB_RT_LBLK(ztpsi(:,:,2),ztpsi(:,:,3), ikb_s,ikb_e)
     call hpsi_acc_KB_RT_LBLK(ztpsi(:,:,3),ztpsi(:,:,4), ikb_s,ikb_e)
-    call update_LBLK(zfac,ztpsi(:,:,:),zu(:,:,:), ikb_s,ikb_e)
+    call update(zfac,ztpsi(:,:,:),zu(:,:,:), ikb_s,ikb_e)
 
 #ifdef ARTED_CURRENT_OPTIMIZED
     if(flag_current) call current_acc_KB_ST_LBLK(zu(:,:,:), ikb_s,ikb_e)
@@ -164,10 +72,10 @@ subroutine dt_evolve_hpsi(flag_current)
 !$acc end data
 
   call timelog_end(LOG_HPSI)
-  ! NVTX_END()
+  NVTX_END()
 
 contains
-  subroutine init_LBLK(tpsi,zu, ikb_s,ikb_e)
+  subroutine init(tpsi,zu, ikb_s,ikb_e)
     use Global_Variables, only: NLx,NLy,NLz
     use opt_variables, only: PNLx,PNLy,PNLz
     use timelog
@@ -196,7 +104,7 @@ contains
     TIMELOG_END(LOG_HPSI_INIT)
   end subroutine
 
-  subroutine update_LBLK(zfac,tpsi,zu, ikb_s,ikb_e)
+  subroutine update(zfac,tpsi,zu, ikb_s,ikb_e)
     use Global_Variables, only: NLx,NLy,NLz
     use opt_variables, only: PNLx,PNLy,PNLz, blk_nkb_hpsi
     use timelog
@@ -230,6 +138,3 @@ contains
     TIMELOG_END(LOG_HPSI_UPDATE)
   end subroutine
 end subroutine
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-#endif
-!--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130

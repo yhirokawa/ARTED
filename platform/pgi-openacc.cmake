@@ -18,10 +18,10 @@ set(CMAKE_C_COMPILER            "mpicc")
 set(CMAKE_C_FLAGS_DEBUG         "-pg")
 set(CMAKE_C_FLAGS_RELEASE       "-fastsse")
 
-# set(STENCIL_WITH_C             ON)
 # set(ENABLE_EXPLICIT_VEC        ON)
 # set(ENABLE_REDUCE_FOR_MANYCORE ON)
 
+set(ENABLE_OPENACC        ON)
 set(ENABLE_LARGE_BLOCKING ON)
 
 ########

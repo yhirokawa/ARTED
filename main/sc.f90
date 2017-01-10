@@ -155,7 +155,7 @@ Program main
     call Total_Energy_omp(Rion_update,'GS')
     call Ion_Force_omp(Rion_update,'GS')
     call sp_energy_omp
-    call current_GS_omp_KB
+    call current_KB_GS
     Eall_GS(iter)=Eall
     esp_var_ave(iter)=sum(esp_var(:,:))/(NK*Nelec/2)
     esp_var_max(iter)=maxval(esp_var(:,:))
@@ -332,7 +332,7 @@ Program main
 #else
     call dt_evolve_etrs_omp_KB(iter)
 #endif
-    call current_omp_KB
+    call current_KB_RT
 
     javt(iter+1,:)=jav(:)
     if (MD_option == 'Y') then
