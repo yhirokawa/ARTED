@@ -572,10 +572,17 @@ Subroutine Read_data
     write(*,*) 'entrance_iter=',entrance_iter
     write(*,*) SYSname
     write(*,*) directory
-!yabana
-    write(*,*) 'functional=',functional
+
+    select case(functional)
+      case('PZ','PZM', 'PBE','TBmBJ')
+        write(*,*) 'functional=',functional
+      case default
+        write(*,*) 'functional=',functional,'is not available'
+        call err_finalize('')
+    end select
+
     if(functional == 'TBmBJ') write(*,*) 'cvalue=',cval
-!yabana
+
     write(*,*) 'ps_format =',ps_format !shinohara
     write(*,*) 'PSmask_option =',PSmask_option !shinohara
     write(*,*) 'alpha_mask, gamma_mask, eta_mask =',alpha_mask, gamma_mask, eta_mask !shinohara

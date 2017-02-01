@@ -107,11 +107,6 @@ contains
     implicit none
     integer :: tid_range
 
-    select case(functional)
-      case('TPSS','VS98')
-        call err_finalize('functional: TPSS/VS98 versions not implemented.')
-    end select
-
 #ifdef ARTED_REDUCE_FOR_MANYCORE
     tid_range = roundup_pow2(NUMBER_THREADS) - 1
 #else
