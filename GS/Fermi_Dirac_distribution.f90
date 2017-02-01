@@ -16,7 +16,7 @@
 Subroutine Fermi_Dirac_distribution
   use Global_Variables
   use communication
-  use timelog
+  use timer
   implicit none
   real(8) :: chemical_potential
   real(8) :: chem_max,chem_min,elec_num

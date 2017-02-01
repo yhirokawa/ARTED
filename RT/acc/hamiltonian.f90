@@ -18,8 +18,8 @@
 ! Hamiltonian with OpenACC
 ! ########################
 
-#define TIMELOG_BEG(id) call timelog_thread_begin(id)
-#define TIMELOG_END(id) call timelog_thread_end(id)
+#define TIMER_BEG(id) call timer_thread_begin(id)
+#define TIMER_END(id) call timer_thread_end(id)
 
 #ifdef ARTED_USE_NVTX
 #define NVTX_BEG(name,id)  call nvtxStartRange(name,id)
@@ -31,7 +31,7 @@
 
 subroutine hamiltonian(flag_current)
   use Global_Variables
-  use timelog
+  use timer
 #ifdef ARTED_USE_NVTX
   use nvtx
 #endif
@@ -50,7 +50,7 @@ subroutine hamiltonian(flag_current)
   end do
 
   NVTX_BEG('hamiltonian()',2)
-  call timelog_begin(LOG_HPSI)
+  call timer_begin(TIMER_HPSI)
 
 !$acc data pcopy(zu) create(ztpsi)
   do ikb0=1,NKB, blk_nkb_hpsi
@@ -71,21 +71,21 @@ subroutine hamiltonian(flag_current)
   end do
 !$acc end data
 
-  call timelog_end(LOG_HPSI)
+  call timer_end(TIMER_HPSI)
   NVTX_END()
 
 contains
   subroutine init(tpsi,zu, ikb_s,ikb_e)
     use Global_Variables, only: NLx,NLy,NLz
     use opt_variables, only: PNLx,PNLy,PNLz
-    use timelog
+    use timer
     implicit none
     integer :: ikb_s,ikb_e
     complex(8),intent(out) :: tpsi(0:PNLz-1,0:PNLy-1,0:PNLx-1, ikb_s:ikb_e)
     complex(8),intent(in)  :: zu(0:NLz-1,0:NLy-1,0:NLx-1, NBoccmax, NK_s:NK_e)
     integer :: ikb,ik,ib, ix,iy,iz
 
-    TIMELOG_BEG(LOG_HPSI_INIT)
+    TIMER_BEG(TIMER_HPSI_INIT)
 !$acc kernels pcopy(tpsi) pcopyin(zu,ib_table,ik_table)
 !$acc loop gang vector(1)
     do ikb=ikb_s,ikb_e
@@ -101,13 +101,13 @@ contains
       end do
     end do
 !$acc end kernels
-    TIMELOG_END(LOG_HPSI_INIT)
+    TIMER_END(TIMER_HPSI_INIT)
   end subroutine
 
   subroutine update(zfac,tpsi,zu, ikb_s,ikb_e)
     use Global_Variables, only: NLx,NLy,NLz
     use opt_variables, only: PNLx,PNLy,PNLz, blk_nkb_hpsi
-    use timelog
+    use timer
     implicit none
     integer :: ikb_s,ikb_e
     complex(8),intent(in)    :: zfac(4)
@@ -115,7 +115,7 @@ contains
     complex(8),intent(inout) :: zu(0:NLz-1,0:NLy-1,0:NLx-1, NBoccmax, NK_s:NK_e)
     integer :: ikb,ik,ib, ix,iy,iz
 
-    TIMELOG_BEG(LOG_HPSI_UPDATE)
+    TIMER_BEG(TIMER_HPSI_UPDATE)
 !$acc kernels pcopy(zu) pcopyin(tpsi,zfac,ib_table,ik_table)
 !$acc loop independent gang vector(1)
     do ikb=ikb_s,ikb_e
@@ -135,6 +135,6 @@ contains
       end do
     end do
 !$acc end kernels
-    TIMELOG_END(LOG_HPSI_UPDATE)
+    TIMER_END(TIMER_HPSI_UPDATE)
   end subroutine
 end subroutine

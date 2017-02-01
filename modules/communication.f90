@@ -31,6 +31,7 @@ module communication
   public :: comm_bcast
   public :: comm_get_min
   public :: comm_get_max
+  public :: comm_logical_and
 
   type, public :: comm_maxloc_type
     real(8) :: val
@@ -88,10 +89,9 @@ module communication
     module procedure comm_logical_and_scalar
   end interface
 
-  private :: get_rank, error_check
-
 #define MPI_ERROR_CHECK(x) x; call error_check(ierr)
 
+private
 contains
   subroutine comm_init
     use mpi

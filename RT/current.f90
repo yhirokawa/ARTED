@@ -67,7 +67,7 @@ end subroutine
 
 subroutine current_KB(mode)
   use Global_Variables, only: NB,NBoccmax,zu_GS,zu
-  use timelog
+  use timer
 #ifdef ARTED_USE_NVTX
   use nvtx
 #endif
@@ -76,7 +76,7 @@ subroutine current_KB(mode)
   real(8) :: jx,jy,jz
 
   NVTX_BEG('current_KB_RT()',2)
-  call timelog_begin(LOG_CURRENT)
+  call timer_begin(TIMER_CURRENT)
   if (mode == 'ZE') then
     call impl(mode,NBoccmax,zu,jx,jy,jz)
   else if (mode == 'GS') then
@@ -91,7 +91,7 @@ subroutine current_KB(mode)
     !
   end if
   call summation(jx,jy,jz)
-  call timelog_end(LOG_CURRENT)
+  call timer_end(TIMER_CURRENT)
   NVTX_END()
 
 contains
@@ -228,7 +228,7 @@ contains
     use Global_Variables
     use omp_lib
     use opt_variables
-    use timelog
+    use timer
     implicit none
     integer,intent(in)    :: ik,ib
     complex(8),intent(in) :: zutmp(NL)
@@ -276,16 +276,16 @@ contains
   subroutine summation(jx,jy,jz)
     use Global_Variables, only: jav
     use communication
-    use timelog
+    use timer
     implicit none
     real(8),intent(in) :: jx,jy,jz
     real(8) :: jav_l(3)
 
-    call timelog_begin(LOG_ALLREDUCE)
+    call timer_begin(TIMER_ALLREDUCE)
     jav_l(1)=jx
     jav_l(2)=jy
     jav_l(3)=jz
     call comm_summation(jav_l,jav,3,proc_group(2))
-    call timelog_end(LOG_ALLREDUCE)
+    call timer_end(TIMER_ALLREDUCE)
   end subroutine
 end subroutine

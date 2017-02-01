@@ -14,8 +14,8 @@
 !  limitations under the License.
 !
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-#define TIMELOG_BEG(id) call timelog_thread_begin(id)
-#define TIMELOG_END(id) call timelog_thread_end(id)
+#define TIMER_BEG(id) call timer_thread_begin(id)
+#define TIMER_END(id) call timer_thread_end(id)
 
 #ifdef ARTED_USE_NVTX
 #define NVTX_BEG(name,id)  call nvtxStartRange(name,id)
@@ -79,7 +79,7 @@ contains
 end subroutine
 
 subroutine hpsi_omp_KB_RT(ik,tpsi,htpsi)
-  use timelog
+  use timer
   use Global_Variables, only: kAc,lapx,lapy,lapz,nabx,naby,nabz,Vloc,Mps,uV,iuV,Hxyz,ekr_omp,Nlma,a_tbl
   use opt_variables, only: lapt,PNLx,PNLy,PNLz,PNL
 #ifdef ARTED_USE_NVTX
@@ -100,13 +100,13 @@ subroutine hpsi_omp_KB_RT(ik,tpsi,htpsi)
   nabt( 5: 8)=kAc(ik,2)*naby(1:4)
   nabt( 9:12)=kAc(ik,3)*nabz(1:4)
 
-  TIMELOG_BEG(LOG_HPSI_STENCIL)
+  TIMER_BEG(TIMER_HPSI_STENCIL)
     call hpsi1_RT_stencil(k2lap0_2,Vloc,lapt,nabt,tpsi,htpsi)
-  TIMELOG_END(LOG_HPSI_STENCIL)
+  TIMER_END(TIMER_HPSI_STENCIL)
 
-  TIMELOG_BEG(LOG_HPSI_PSEUDO)
+  TIMER_BEG(TIMER_HPSI_PSEUDO)
     call pseudo_pt(ik,tpsi,htpsi)
-  TIMELOG_END(LOG_HPSI_PSEUDO)
+  TIMER_END(TIMER_HPSI_PSEUDO)
 
   NVTX_END()
 

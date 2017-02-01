@@ -20,7 +20,7 @@
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
 Program main
   use Global_Variables
-  use timelog
+  use timer
   use opt_variables
   use environment
   use performance_analyzer
@@ -35,7 +35,7 @@ Program main
 
   call comm_init
 
-  call timelog_initialize
+  call timer_initialize
   call load_environments
 
   if(comm_is_root(1)) then
@@ -100,7 +100,7 @@ Program main
   if(comm_is_root(1)) write(*,*) 'This is the end of preparation for ground state calculation'
   if(comm_is_root(1)) write(*,*) '-----------------------------------------------------------'
 
-  call timelog_reset
+  call timer_reset
   do iter=1,Nscf
     if (comm_is_root(1))  write(*,*) 'iter = ',iter
     if( kbTev < 0d0 )then ! sato
@@ -181,21 +181,21 @@ Program main
   etime2 = get_wtime()
 
   if(comm_is_root(1)) then
-    call timelog_set(LOG_DYNAMICS, etime2 - etime1)
-    call timelog_show_hour('Ground State time  :', LOG_DYNAMICS)
-    call timelog_show_min ('CG time            :', LOG_CG)
-    call timelog_show_min ('Gram Schmidt time  :', LOG_GRAM_SCHMIDT)
-    call timelog_show_min ('diag time          :', LOG_DIAG)
-    call timelog_show_min ('sp_energy time     :', LOG_SP_ENERGY)
-    call timelog_show_min ('hpsi time          :', LOG_HPSI)
-    call timelog_show_min (' - stencil time    :', LOG_HPSI_STENCIL)
-    call timelog_show_min (' - pseudo pt. time :', LOG_HPSI_PSEUDO)
-    call timelog_show_min ('psi_rho time       :', LOG_PSI_RHO)
-    call timelog_show_min ('Hartree time       :', LOG_HARTREE)
-    call timelog_show_min ('Exc_Cor time       :', LOG_EXC_COR)
-    call timelog_show_min ('current time       :', LOG_CURRENT)
-    call timelog_show_min ('Total_Energy time  :', LOG_TOTAL_ENERGY)
-    call timelog_show_min ('Ion_Force time     :', LOG_ION_FORCE)
+    call timer_set(TIMER_DYNAMICS, etime2 - etime1)
+    call timer_show_hour('Ground State time  :', TIMER_DYNAMICS)
+    call timer_show_min ('CG time            :', TIMER_CG)
+    call timer_show_min ('Gram Schmidt time  :', TIMER_GRAM_SCHMIDT)
+    call timer_show_min ('diag time          :', TIMER_DIAG)
+    call timer_show_min ('sp_energy time     :', TIMER_SP_ENERGY)
+    call timer_show_min ('hpsi time          :', TIMER_HPSI)
+    call timer_show_min (' - stencil time    :', TIMER_HPSI_STENCIL)
+    call timer_show_min (' - pseudo pt. time :', TIMER_HPSI_PSEUDO)
+    call timer_show_min ('psi_rho time       :', TIMER_PSI_RHO)
+    call timer_show_min ('Hartree time       :', TIMER_HARTREE)
+    call timer_show_min ('Exc_Cor time       :', TIMER_EXC_COR)
+    call timer_show_min ('current time       :', TIMER_CURRENT)
+    call timer_show_min ('Total_Energy time  :', TIMER_TOTAL_ENERGY)
+    call timer_show_min ('Ion_Force time     :', TIMER_ION_FORCE)
   end if
   if(comm_is_root(1)) write(*,*) 'This is the end of GS calculation'
 
@@ -326,15 +326,15 @@ Program main
 
 !$acc enter data create(kAc)
 
-  call timelog_reset
-  call timelog_enable_verbose
+  call timer_reset
+  call timer_enable_verbose
   etime1=get_wtime()
 !$acc enter data copyin(zu)
   RTiteratopm : do iter=entrance_iter+1,Nt ! sato
 
     call dt_evolve_Ac ! sato
     Macro_loop : do ixy_m=NXY_s,NXY_e ! sato
-      call timelog_begin(LOG_OTHER)
+      call timer_begin(TIMER_OTHER)
 ! sato ---------------------------------------
       ix_m=NX_table(ixy_m)
       iy_m=NY_table(ixy_m)
@@ -351,7 +351,7 @@ Program main
       kAc(:,3)=kAc0(:,3)+(Ac_new_m(3,ix_m,iy_m)+Ac_m(3,ix_m,iy_m))/2d0
 !$acc update device(kAc)
 ! sato ---------------------------------------
-      call timelog_end(LOG_OTHER)
+      call timer_end(TIMER_OTHER)
       
 #ifdef ARTED_USE_OLD_PROPAGATOR
       call dt_evolve_omp_KB_MS
@@ -360,7 +360,7 @@ Program main
       call dt_evolve_omp_KB_MS
 #endif
 
-      call timelog_begin(LOG_OTHER)
+      call timer_begin(TIMER_OTHER)
 ! sato ---------------------------------------
       if(NXYsplit /= 1)then
         zu_m(:,:,:,ixy_m)=zu(:,:,:)
@@ -374,11 +374,11 @@ Program main
       kAc(:,3)=kAc0(:,3)+Ac_new_m(3,ix_m,iy_m)
 !$acc update device(kAc)
 ! sato ---------------------------------------
-      call timelog_end(LOG_OTHER)
+      call timer_end(TIMER_OTHER)
 
       call current_KB_RT
 
-      call timelog_begin(LOG_OTHER)
+      call timer_begin(TIMER_OTHER)
 ! sato ---------------------------------------
       if(Sym /= 1)then
         jav(1)=0d0
@@ -388,7 +388,7 @@ Program main
         jmatter_m_l(1:3,ix_m,iy_m)=jav(1:3)
       end if
 ! sato ---------------------------------------
-      call timelog_end(LOG_OTHER)
+      call timer_end(TIMER_OTHER)
 
       javt(iter,:)=jav(:)
       if (MD_option == 'Y') then
@@ -405,13 +405,13 @@ Program main
         end if
       end if
     
-      call timelog_begin(LOG_OTHER)
+      call timer_begin(TIMER_OTHER)
       if(comm_is_root(2))then ! sato
         energy_elec_Matter_l(ix_m,iy_m)=Eall-Eall0 ! sato
       end if ! sato
-      call timelog_end(LOG_OTHER)
+      call timer_end(TIMER_OTHER)
 
-      call timelog_begin(LOG_K_SHIFT_WF)
+      call timer_begin(TIMER_K_SHIFT_WF)
 !Adiabatic evolution
       if (AD_RHO /= 'No' .and. mod(iter,100) == 0) then
         call k_shift_wf(Rion_update,2)
@@ -424,19 +424,19 @@ Program main
           excited_electron_l(ix_m,iy_m)=sum(occ)-sum(ovlp_occ(1:NBoccmax,:))
         end if ! sato
       end if
-      call timelog_end(LOG_K_SHIFT_WF)
+      call timer_end(TIMER_K_SHIFT_WF)
       
     end do Macro_loop
 
-    call timelog_begin(LOG_ALLREDUCE)
+    call timer_begin(TIMER_ALLREDUCE)
     call comm_summation(jmatter_m_l,jmatter_m,3*NX_m*NY_m,proc_group(1))
     j_m(:,1:NX_m,1:NY_m)=jmatter_m(:,1:NX_m,1:NY_m)
     if(mod(iter,10) == 1) then
       call comm_bcast(reentrance_switch,proc_group(1))
     end if
-    call timelog_end(LOG_ALLREDUCE)
+    call timer_end(TIMER_ALLREDUCE)
 
-    call timelog_begin(LOG_OTHER)
+    call timer_begin(TIMER_OTHER)
 !write section ================================================================================
     if(comm_is_root(1)) then
       write(941,'(4e26.16E3)') iter*dt, Ac_new_m(1:3,0,1)
@@ -458,13 +458,13 @@ Program main
     if (mod(iter, Nstep_write) == 0) then
       index = iter / Nstep_write
 
-      call timelog_end(LOG_OTHER)
+      call timer_end(TIMER_OTHER)
       
-      call timelog_begin(LOG_ALLREDUCE)
+      call timer_begin(TIMER_ALLREDUCE)
       call comm_summation(energy_elec_Matter_l,energy_elec_Matter,NX_m*NY_m,proc_group(1))
-      call timelog_end(LOG_ALLREDUCE)
+      call timer_end(TIMER_ALLREDUCE)
 
-      call timelog_begin(LOG_OTHER)
+      call timer_begin(TIMER_OTHER)
 
       energy_elec(1:NX_m,1:NY_m)=energy_elec_Matter(1:NX_m,1:NY_m) 
       energy_total=energy_elemag+energy_elec
@@ -492,21 +492,21 @@ Program main
 !          &,sum(energy_elemag)*HX_m*HY_m/aLxyz,sum(energy_total)*HX_m*HY_m/aLxyz
       end if
     end if
-    call timelog_end(LOG_OTHER)
+    call timer_end(TIMER_OTHER)
 
     if (AD_RHO /= 'No' .and. mod(iter,100) == 0 ) then 
-      call timelog_begin(LOG_ALLREDUCE)
+      call timer_begin(TIMER_ALLREDUCE)
       call comm_summation(excited_electron_l,excited_electron,NX_m*NY_m,proc_group(1))
-      call timelog_end(LOG_ALLREDUCE)
+      call timer_end(TIMER_ALLREDUCE)
       if(comm_is_root(1))call write_excited_electron(iter)
     else if (iter == Nt ) then
-      call timelog_begin(LOG_ALLREDUCE)
+      call timer_begin(TIMER_ALLREDUCE)
       call comm_summation(excited_electron_l,excited_electron,NX_m*NY_m,proc_group(1))
-      call timelog_end(LOG_ALLREDUCE)
+      call timer_end(TIMER_ALLREDUCE)
       if(comm_is_root(1))call write_excited_electron(iter)
     end if
 
-    call timelog_begin(LOG_OTHER)
+    call timer_begin(TIMER_OTHER)
     if (reentrance_switch == 1) then 
       call comm_sync_all
       write(*,*) procid(1),'iter =',iter
@@ -518,10 +518,10 @@ Program main
 
 !Timer
     etime2=get_wtime()
-    call timelog_set(LOG_DYNAMICS, etime2 - etime1)
+    call timer_set(TIMER_DYNAMICS, etime2 - etime1)
     if (iter/1000*1000 == iter.and.comm_is_root(1)) then
       write(*,*) 'iter =',iter
-      call timelog_show_hour('dynamics time     :', LOG_DYNAMICS)
+      call timer_show_hour('dynamics time     :', TIMER_DYNAMICS)
     end if
 
 !Timer for shutdown
@@ -535,31 +535,31 @@ Program main
       end if
     end if
 ! sato ---------------------------------------
-    call timelog_end(LOG_OTHER)
+    call timer_end(TIMER_OTHER)
 
   enddo RTiteratopm !end of RT iteraction========================
 !$acc exit data copyout(zu)
   etime2=get_wtime()
-  call timelog_set(LOG_DYNAMICS, etime2 - etime1)
-  call timelog_disable_verbose
+  call timer_set(TIMER_DYNAMICS, etime2 - etime1)
+  call timer_disable_verbose
 
   if(comm_is_root(1)) then
-    call timelog_show_hour('dynamics time      :', LOG_DYNAMICS)
-    call timelog_show_min ('dt_evolve_Ac time  :', LOG_DT_EVOLVE_AC)
-    call timelog_show_min ('dt_evolve time     :', LOG_DT_EVOLVE)
-    call timelog_show_min ('hpsi time          :', LOG_HPSI)
-    call timelog_show_min (' - init time       :', LOG_HPSI_INIT)
-    call timelog_show_min (' - stencil time    :', LOG_HPSI_STENCIL)
-    call timelog_show_min (' - pseudo pt. time :', LOG_HPSI_PSEUDO)
-    call timelog_show_min (' - update time     :', LOG_HPSI_UPDATE)
-    call timelog_show_min ('psi_rho time       :', LOG_PSI_RHO)
-    call timelog_show_min ('Hartree time       :', LOG_HARTREE)
-    call timelog_show_min ('Exc_Cor time       :', LOG_EXC_COR)
-    call timelog_show_min ('current time       :', LOG_CURRENT)
-    call timelog_show_min ('Total_Energy time  :', LOG_TOTAL_ENERGY)
-    call timelog_show_min ('Ion_Force time     :', LOG_ION_FORCE)
-    call timelog_show_min ('k_shift_wf time    :', LOG_K_SHIFT_WF)
-    call timelog_show_min ('Other time         :', LOG_OTHER)
+    call timer_show_hour('dynamics time      :', TIMER_DYNAMICS)
+    call timer_show_min ('dt_evolve_Ac time  :', TIMER_DT_EVOLVE_AC)
+    call timer_show_min ('dt_evolve time     :', TIMER_DT_EVOLVE)
+    call timer_show_min ('hpsi time          :', TIMER_HPSI)
+    call timer_show_min (' - init time       :', TIMER_HPSI_INIT)
+    call timer_show_min (' - stencil time    :', TIMER_HPSI_STENCIL)
+    call timer_show_min (' - pseudo pt. time :', TIMER_HPSI_PSEUDO)
+    call timer_show_min (' - update time     :', TIMER_HPSI_UPDATE)
+    call timer_show_min ('psi_rho time       :', TIMER_PSI_RHO)
+    call timer_show_min ('Hartree time       :', TIMER_HARTREE)
+    call timer_show_min ('Exc_Cor time       :', TIMER_EXC_COR)
+    call timer_show_min ('current time       :', TIMER_CURRENT)
+    call timer_show_min ('Total_Energy time  :', TIMER_TOTAL_ENERGY)
+    call timer_show_min ('Ion_Force time     :', TIMER_ION_FORCE)
+    call timer_show_min ('k_shift_wf time    :', TIMER_K_SHIFT_WF)
+    call timer_show_min ('Other time         :', TIMER_OTHER)
   end if
   call write_performance(trim(directory)//'ms_performance')
 
@@ -1137,7 +1137,7 @@ End Subroutine Read_data
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
 subroutine prep_Reentrance_Read
   use Global_Variables
-  use timelog,       only: timelog_reentrance_read, get_wtime
+  use timer,       only: timer_reentrance_read, get_wtime
   use opt_variables, only: opt_vars_initialize_p1, opt_vars_initialize_p2
   use communication
   implicit none
@@ -1372,7 +1372,7 @@ subroutine prep_Reentrance_Read
   read(500) itable_sym(:,:) ! sym
   read(500) rho_l(:),rho_tmp1(:),rho_tmp2(:) !sym
 
-  call timelog_reentrance_read(500)
+  call timer_reentrance_read(500)
   call opt_vars_initialize_p1
   call opt_vars_initialize_p2
 
@@ -1390,7 +1390,7 @@ end subroutine prep_Reentrance_Read
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
 subroutine prep_Reentrance_write
   use Global_Variables
-  use timelog, only: timelog_reentrance_write, get_wtime
+  use timer, only: timer_reentrance_write, get_wtime
   use communication
   implicit none
   real(8) :: time_in,time_out
@@ -1556,7 +1556,7 @@ subroutine prep_Reentrance_write
   write(500) itable_sym(:,:) ! sym
   write(500) rho_l(:),rho_tmp1(:),rho_tmp2(:) !sym
 
-  call timelog_reentrance_write(500)
+  call timer_reentrance_write(500)
 
 !== write data ===!  
 

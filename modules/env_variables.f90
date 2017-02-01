@@ -16,16 +16,15 @@
 module environment
   implicit none
 
-  real(8) :: CPU_TASK_RATIO
-  real(8) :: MIC_TASK_RATIO
+  real(8), public :: CPU_TASK_RATIO
+  real(8), public :: MIC_TASK_RATIO
+  integer, public :: CPU_PROCESS_PER_NODE
+  integer, public :: MIC_PROCESS_PER_NODE
+  integer, public :: ENABLE_LOAD_BALANCER
 
-  integer :: CPU_PROCESS_PER_NODE
-  integer :: MIC_PROCESS_PER_NODE
+  public :: load_environments
 
-  integer :: ENABLE_LOAD_BALANCER
-
-  integer :: IS_SYMMETRIC_DEBUG
-
+private
 contains
   subroutine load_environments
     implicit none
@@ -37,7 +36,5 @@ contains
     call get_mic_ppn_internal(MIC_PROCESS_PER_NODE)
 
     call get_load_balancer_flag_internal(ENABLE_LOAD_BALANCER)
-
-    call get_sym_debug_mode_internal(IS_SYMMETRIC_DEBUG)
   end subroutine
-end module environment
+end module

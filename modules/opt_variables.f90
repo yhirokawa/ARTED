@@ -16,44 +16,53 @@
 module opt_variables
   implicit none
 
-  real(8) :: lapt(12)
+  ! for the stencil computation
+  real(8),    public              :: lapt(12)
+  integer,    public              :: PNLx,PNLy,PNLz,PNL
+  complex(8), public, allocatable :: ztpsi(:,:,:)
+  integer,    public, allocatable :: modx(:),mody(:),modz(:)
+  integer,    public              :: STENCIL_BLOCKING_X,STENCIL_BLOCKING_Y
 
-  integer                :: PNLx,PNLy,PNLz,PNL
-  complex(8),allocatable :: ztpsi(:,:,:)
+  ! for the hpsi subroutine
+  integer,    public, allocatable :: zJxyz(:,:),zKxyz(:,:)
 
-  real(8),allocatable :: zrhotmp(:,:)
+  ! for the psi_rho subroutine
+  real(8),    public, allocatable :: zrhotmp(:,:)
 
-  integer,allocatable :: zJxyz(:,:),zKxyz(:,:)
-
-  integer,allocatable :: modx(:),mody(:),modz(:)
-
-  integer :: STENCIL_BLOCKING_X
-  integer :: STENCIL_BLOCKING_Y
-
-  real(8),allocatable :: zcx(:,:),zcy(:,:),zcz(:,:)
-
-#ifdef ARTED_STENCIL_ORIGIN
-  integer,allocatable :: zifdx(:,:),zifdy(:,:),zifdz(:,:)
-#endif
-
-  integer,allocatable :: hpsi_called(:)
+  ! for the current subroutine
+  real(8),    public, allocatable :: zcx(:,:),zcy(:,:),zcz(:,:)
 
 #ifdef ARTED_LBLK
-  integer,allocatable :: t4ppt_nlma(:)    ! (PNL)
-  integer,allocatable :: t4ppt_i2vi(:)    ! (PNL)
-  integer,allocatable :: t4ppt_vi2i(:)    ! (PNL)
-  integer,allocatable :: t4ppt_ilma(:,:)  ! (PNL?,Nlma?)
-  integer,allocatable :: t4ppt_j(:,:)     ! (PNL?,Nlma?)
-  integer :: t4ppt_max_vi
+  ! for the hpsi and current subroutine
+  integer,    public, allocatable :: t4ppt_nlma(:)    ! (PNL)
+  integer,    public, allocatable :: t4ppt_i2vi(:)    ! (PNL)
+  integer,    public, allocatable :: t4ppt_vi2i(:)    ! (PNL)
+  integer,    public, allocatable :: t4ppt_ilma(:,:)  ! (PNL?,Nlma?)
+  integer,    public, allocatable :: t4ppt_j(:,:)     ! (PNL?,Nlma?)
+  integer,    public              :: t4ppt_max_vi
 
-  integer, parameter :: at_least_parallelism = 4*1024*1024
-  integer :: blk_nkb_hpsi
-  integer :: blk_nkb_current
+  integer,    private, parameter  :: at_least_parallelism = 4*1024*1024
+  integer,    public              :: blk_nkb_hpsi
+  integer,    public              :: blk_nkb_current
 
-  real(8),allocatable :: t4cp_uVpsix(:,:)  ! (Nlma, NKB)
-  real(8),allocatable :: t4cp_uVpsiy(:,:)
-  real(8),allocatable :: t4cp_uVpsiz(:,:)
+  real(8),    public, allocatable :: t4cp_uVpsix(:,:)  ! (Nlma, NKB)
+  real(8),    public, allocatable :: t4cp_uVpsiy(:,:)
+  real(8),    public, allocatable :: t4cp_uVpsiz(:,:)
 #endif
+
+#ifdef ARTED_STENCIL_ORIGIN
+  integer,    public, allocatable :: zifdx(:,:),zifdy(:,:),zifdz(:,:)
+#endif
+
+  public :: opt_vars_initialize_p1
+  public :: opt_vars_initialize_p2
+  public :: symmetric_load_balancing
+  public :: is_symmetric_mode
+
+#ifdef ARTED_LBLK
+  public :: opt_vars_init_t4ppt
+#endif
+
 
 #if defined(__KNC__) || defined(__AVX512F__)
 # define MEM_ALIGNED 64
@@ -72,45 +81,18 @@ module opt_variables
 !dir$ attributes align:MEM_ALIGNED :: zifdx,zifdy,zifdz
 #endif
 
+
+private
 contains
-  function ceil_power_of_two(n)
-    implicit none
-    integer,intent(in) :: n
-    integer            :: ceil_power_of_two
-    integer :: x
-    x = n
-    x = ior(x, ishft(x, 1))
-    x = ior(x, ishft(x, 2))
-    x = ior(x, ishft(x, 4))
-    x = ior(x, ishft(x, 8))
-    x = ior(x, ishft(x, 16))
-    ceil_power_of_two = x - ishft(x, 1)
-  end function
-
-  function roundup_pow2(n)
-    implicit none
-    integer,intent(in) :: n
-    integer            :: roundup_pow2,k
-
-    k = n - 1
-    k = ior(k, ishft(k,-1))
-    k = ior(k, ishft(k,-2))
-    k = ior(k, ishft(k,-4))
-    k = ior(k, ishft(k,-8))
-    k = ior(k, ishft(k,-16))
-
-    roundup_pow2 = k + 1
-  end function roundup_pow2
-
   subroutine opt_vars_initialize_p1
     use global_variables
+    use misc_routines, only: ceiling_pow2
     implicit none
     integer :: tid_range
 
-#ifdef ARTED_REDUCE_FOR_MANYCORE
-    tid_range = roundup_pow2(NUMBER_THREADS) - 1
-#else
     tid_range = 0
+#ifdef ARTED_REDUCE_FOR_MANYCORE
+    tid_range = ceiling_pow2(NUMBER_THREADS) - 1
 #endif
     allocate(zrhotmp(0:NL-1,0:tid_range))
   end subroutine
@@ -298,6 +280,7 @@ contains
 #endif
 
   subroutine auto_blocking
+    use misc_routines, only: floor_pow2
     implicit none
     integer,parameter :: L1cache_size =  8 * 1024
     integer,parameter :: value_size   = 24
@@ -307,8 +290,8 @@ contains
     nyx = dble(L1cache_size) / (PNLz * value_size)
     sq  = int(floor(sqrt(nyx)))
 
-    STENCIL_BLOCKING_X = ceil_power_of_two(min(sq, PNLx))
-    STENCIL_BLOCKING_Y = ceil_power_of_two(min(sq, PNLy))
+    STENCIL_BLOCKING_X = floor_pow2(min(sq, PNLx))
+    STENCIL_BLOCKING_Y = floor_pow2(min(sq, PNLy))
   end subroutine
 
   subroutine symmetric_load_balancing(NK,NK_ave,NK_s,NK_e,NK_remainder,procid,nprocs)

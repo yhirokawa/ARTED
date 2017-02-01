@@ -18,8 +18,8 @@
 ! hpsi with OpenACC in RT calculation
 ! ###################################
 
-#define TIMELOG_BEG(id) call timelog_thread_begin(id)
-#define TIMELOG_END(id) call timelog_thread_end(id)
+#define TIMER_BEG(id) call timer_thread_begin(id)
+#define TIMER_END(id) call timer_thread_end(id)
 
 #ifdef ARTED_USE_NVTX
 #define NVTX_BEG(name,id)  call nvtxStartRange(name,id)
@@ -32,7 +32,7 @@
 subroutine hpsi_acc_KB_RT_LBLK(tpsi,htpsi, ikb_s,ikb_e)
   use Global_Variables
   use opt_variables
-  use timelog
+  use timer
 #ifdef ARTED_USE_NVTX
   use nvtx
 #endif
@@ -50,7 +50,7 @@ subroutine hpsi_acc_KB_RT_LBLK(tpsi,htpsi, ikb_s,ikb_e)
 !$acc data pcopy(tpsi) create(k2lap0_2,nabt)
 
   NVTX_BEG('hpsi_acc_KB_RT_LBLK(): hpsi1_RT_stencil', 4)
-  TIMELOG_BEG(LOG_HPSI_STENCIL)
+  TIMER_BEG(TIMER_HPSI_STENCIL)
 !$acc kernels pcopy(k2lap0_2,nabt) pcopyin(ik_table,kac,lapx,lapy,lapz,nabx,naby,nabz)
 !$acc loop gang vector
     do ikb = ikb_s, ikb_e
@@ -63,13 +63,13 @@ subroutine hpsi_acc_KB_RT_LBLK(tpsi,htpsi, ikb_s,ikb_e)
     enddo
 !$acc end kernels
   call hpsi1_RT_stencil_LBLK(k2lap0_2(:),Vloc,lapt,nabt(:,:),tpsi(:,:),htpsi(:,:), ikb_s,ikb_e)
-  TIMELOG_END(LOG_HPSI_STENCIL)
+  TIMER_END(TIMER_HPSI_STENCIL)
   NVTX_END()
 
   NVTX_BEG('hps_acc_KB_RT_LBLK(): pseudo_pt', 5)
-  TIMELOG_BEG(LOG_HPSI_PSEUDO)
+  TIMER_BEG(TIMER_HPSI_PSEUDO)
   call pseudo_pt_LBLK(tpsi(:,:),htpsi(:,:), ikb_s,ikb_e)
-  TIMELOG_END(LOG_HPSI_PSEUDO)
+  TIMER_END(TIMER_HPSI_PSEUDO)
   NVTX_END()
 
 !$acc end data

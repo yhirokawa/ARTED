@@ -16,53 +16,68 @@
 module performance_analyzer
   implicit none
 
-  public  write_performance
-  public  print_stencil_size
-  public  get_hamiltonian_performance
+  public  :: get_hamiltonian_performance
+  public  :: write_performance
 
-  private write_hamiltonian
-  private write_loadbalance
-
-  private summation_threads, get_gflops, get_hamiltonian_chunk_size
-  private get_stencil_FLOP, get_pseudo_pt_FLOP, get_update_FLOP
-  private get_filename
-
+private
 contains
-  subroutine print_stencil_size
-    use global_variables, only: NK_s,NK_e,NBoccmax,NL,Nt,NUMBER_THREADS
-    implicit none
-    integer :: NK, NB
-
-    NK = NK_e - NK_s + 1
-    NB = NBoccmax
-    print *, 'NK =', NK
-    print *, 'NB =', NB
-    print *, 'NL =', NL
-    print *, 'Nt =', (Nt + 1)
-    print *, 'Number of Domain/Thread =', real(NK * NB) / NUMBER_THREADS
-  end subroutine
-
   subroutine get_hamiltonian_performance(lgflops)
     implicit none
     real(8) :: lgflops(4)
     call summation_threads(lgflops)
   end subroutine
 
-  function get_filename(filename)
+  subroutine write_performance(filename)
+    use global_variables
+    use communication
+    use misc_routines, only: gen_logfilename
     implicit none
     character(*),intent(in) :: filename
-    character(100) :: get_filename
-    character(8)   :: d
-    character(10)  :: t
-    call date_and_time(date=d,time=t)
 
-    write (get_filename,'(A)') filename//'_'//d//'_'//t(1:6)//'.log'
-  end function
+    integer,parameter :: iounit = 999
+
+    if(comm_is_root()) then
+      open(iounit, file=gen_logfilename(filename))
+      call write_stencil_size(iounit)
+      write (iounit,'(A)') '==='
+    end if
+
+    call write_hamiltonian(iounit)
+    if(comm_is_root()) then
+      write (iounit,'(A)') '==='
+    end if
+    call write_loadbalance(iounit)
+
+    if(comm_is_root()) then
+      close(iounit)
+    end if
+
+    call comm_sync_all
+  end subroutine
+
+  subroutine write_stencil_size(iounit)
+    use global_variables, only: NK, NK_s,NK_e,NBoccmax,NL,Nt,NUMBER_THREADS
+    implicit none
+    integer,intent(in) :: iounit
+
+    character(*),parameter :: f = '(A,I15)'
+    integer :: NKp, NB
+
+    NKp = NK_e - NK_s + 1
+    NB  = NBoccmax
+    write (iounit,'(A)')       'Parallelism'
+    write (iounit,f)           'NK           ', NK
+    write (iounit,f)           'NK/Process   ', NKp
+    write (iounit,f)           'NB           ', NB
+    write (iounit,f)           'NL           ', NL
+    write (iounit,f)           'Nt           ', (Nt + 1)
+    write (iounit,'(A,f15.6)') 'Domain/Thread', real(NKp * NB) / NUMBER_THREADS
+  end subroutine
 
   subroutine write_hamiltonian(iounit)
     use global_variables
     use communication
-    use timelog
+    use timer
     implicit none
     integer,intent(in) :: iounit
 
@@ -88,7 +103,7 @@ contains
     call comm_summation(lgflops, tgflops, 4, proc_group(1))
 
     if(comm_is_root()) then
-      write (iounit,'(A)') 'Performance [GFLOPS]'
+      write (iounit,'(A)')        'Performance [GFLOPS]'
       write (iounit,'(A,4(A15))') 'Type           ', 'Hamiltonian', 'Stencil', 'Pseudo-Pt', 'Update'
       write (iounit,f)            'Processor      ', lgflops(4), lgflops(1), lgflops(2), lgflops(3)
       write (iounit,f)            'Processor(max) ', pgflops(4), pgflops(1), pgflops(2), pgflops(3)
@@ -102,30 +117,30 @@ contains
   subroutine write_loadbalance(iounit)
     use global_variables
     use communication
-    use timelog
+    use timer
     implicit none
     integer,intent(in) :: iounit
 
-    integer,parameter      :: LOG_SIZE=12
+    integer,parameter      :: TIMER_SIZE=12
     character(*),parameter :: f = "(A,3(F12.4),F12.2)"
 
-    real(8) :: src(LOG_SIZE), rmin(LOG_SIZE), rmax(LOG_SIZE), diff(LOG_SIZE), rel(LOG_SIZE)
+    real(8) :: src(TIMER_SIZE), rmin(TIMER_SIZE), rmax(TIMER_SIZE), diff(TIMER_SIZE), rel(TIMER_SIZE)
 
-    src( 1) = timelog_get(LOG_DT_EVOLVE)
-    src( 2) = timelog_get(LOG_HPSI)
-    src( 3) = timelog_get(LOG_PSI_RHO)
-    src( 4) = timelog_get(LOG_HARTREE)
-    src( 5) = timelog_get(LOG_CURRENT)
-    src( 6) = timelog_get(LOG_TOTAL_ENERGY)
-    src( 7) = timelog_get(LOG_ION_FORCE)
-    src( 8) = timelog_get(LOG_DT_EVOLVE_AC)
-    src( 9) = timelog_get(LOG_K_SHIFT_WF)
-    src(10) = timelog_get(LOG_OTHER)
-    src(11) = timelog_get(LOG_ALLREDUCE)
-    src(12) = timelog_get(LOG_DYNAMICS)
+    src( 1) = timer_get(TIMER_DT_EVOLVE)
+    src( 2) = timer_get(TIMER_HPSI)
+    src( 3) = timer_get(TIMER_PSI_RHO)
+    src( 4) = timer_get(TIMER_HARTREE)
+    src( 5) = timer_get(TIMER_CURRENT)
+    src( 6) = timer_get(TIMER_TOTAL_ENERGY)
+    src( 7) = timer_get(TIMER_ION_FORCE)
+    src( 8) = timer_get(TIMER_DT_EVOLVE_AC)
+    src( 9) = timer_get(TIMER_K_SHIFT_WF)
+    src(10) = timer_get(TIMER_OTHER)
+    src(11) = timer_get(TIMER_ALLREDUCE)
+    src(12) = timer_get(TIMER_DYNAMICS)
 
-    call comm_get_min(src,rmin,LOG_SIZE,proc_group(1))
-    call comm_get_max(src,rmax,LOG_SIZE,proc_group(1))
+    call comm_get_min(src,rmin,TIMER_SIZE,proc_group(1))
+    call comm_get_max(src,rmax,TIMER_SIZE,proc_group(1))
 
     diff(:) = rmax(:) - rmin(:)
     rel(:)  = rmax(:) / rmin(:)
@@ -148,26 +163,9 @@ contains
     end if
   end subroutine
 
-  subroutine write_performance(filename)
-    use global_variables
-    use communication
-    implicit none
-    character(*),intent(in) :: filename
-
-    integer,parameter :: iounit = 999
-
-    if(comm_is_root()) open(iounit, file=get_filename(filename))
-    call write_hamiltonian(iounit)
-    if(comm_is_root()) write (iounit,'(A)') '==='
-    call write_loadbalance(iounit)
-    if(comm_is_root()) close(iounit)
-
-    call comm_sync_all
-  end subroutine
-
   subroutine summation_threads(lgflops)
     use global_variables, only: NUMBER_THREADS, functional
-    use timelog
+    use timer
     implicit none
     real(8), intent(out) :: lgflops(4)
     real(8) :: hflop(3), htime(4)
@@ -201,10 +199,10 @@ contains
       hflop(2) = get_pseudo_pt_FLOP(cnt) * ncalls_in_loop
       hflop(3) = get_update_FLOP(cnt)    * ncalls_in_loop
 
-      htime(1) = timelog_thread_get(LOG_HPSI_STENCIL, i)
-      htime(2) = timelog_thread_get(LOG_HPSI_PSEUDO, i)
-      htime(3) = timelog_thread_get(LOG_HPSI_UPDATE, i)
-      htime(4) = timelog_thread_get(LOG_HPSI_INIT, i)
+      htime(1) = timer_thread_get(TIMER_HPSI_STENCIL, i)
+      htime(2) = timer_thread_get(TIMER_HPSI_PSEUDO, i)
+      htime(3) = timer_thread_get(TIMER_HPSI_UPDATE, i)
+      htime(4) = timer_thread_get(TIMER_HPSI_INIT, i)
 
       lgflops(1) = lgflops(1) + get_gflops(hflop(1), htime(1))
       lgflops(2) = lgflops(2) + get_gflops(hflop(2), htime(2))

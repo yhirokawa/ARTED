@@ -27,7 +27,7 @@
 
 Subroutine dt_evolve_omp_KB(iter)
   use Global_Variables
-  use timelog
+  use timer
 #ifdef ARTED_USE_NVTX
   use nvtx
 #endif
@@ -39,7 +39,7 @@ Subroutine dt_evolve_omp_KB(iter)
   integer    :: thr_id,omp_get_thread_num,ikb
 
   NVTX_BEG('dt_evolve_omp_KB()',1)
-  call timelog_begin(LOG_DT_EVOLVE)
+  call timer_begin(TIMER_DT_EVOLVE)
 
 !$acc data pcopy(zu, vloc) pcopyout(ekr_omp)
 
@@ -172,7 +172,7 @@ Subroutine dt_evolve_omp_KB(iter)
 
 !$acc end data
 
-  call timelog_end(LOG_DT_EVOLVE)
+  call timer_end(TIMER_DT_EVOLVE)
   NVTX_END()
 
   return
@@ -182,7 +182,7 @@ End Subroutine dt_evolve_omp_KB
 #ifdef ARTED_SC
 Subroutine dt_evolve_etrs_omp_KB(iter)
   use Global_Variables
-  use timelog
+  use timer
 #ifdef ARTED_USE_NVTX
   use nvtx
 #endif
@@ -194,7 +194,7 @@ Subroutine dt_evolve_etrs_omp_KB(iter)
   integer    :: thr_id,omp_get_thread_num,ikb
 
   NVTX_BEG('dt_evolve_omp_KB()',1)
-  call timelog_begin(LOG_DT_EVOLVE)
+  call timer_begin(TIMER_DT_EVOLVE)
 
   dt_t = dt; dt = 0.5d0*dt
 
@@ -352,7 +352,7 @@ Subroutine dt_evolve_etrs_omp_KB(iter)
 !$acc end data
 
   dt = dt_t
-  call timelog_end(LOG_DT_EVOLVE)
+  call timer_end(TIMER_DT_EVOLVE)
   NVTX_END()
 
   return
@@ -362,7 +362,7 @@ End Subroutine dt_evolve_etrs_omp_KB
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
 Subroutine dt_evolve_omp_KB_MS
   use Global_Variables
-  use timelog
+  use timer
   use nvtx
   use opt_variables
   implicit none
@@ -372,7 +372,7 @@ Subroutine dt_evolve_omp_KB_MS
   integer    :: thr_id,omp_get_thread_num,ikb
 
   NVTX_BEG('dt_evolve_omp_KB_MS()',1)
-  call timelog_begin(LOG_DT_EVOLVE)
+  call timer_begin(TIMER_DT_EVOLVE)
 
 !$acc data pcopy(zu, vloc) pcopyout(ekr_omp)
 
@@ -480,7 +480,7 @@ Subroutine dt_evolve_omp_KB_MS
 
 !$acc end data
 
-  call timelog_end(LOG_DT_EVOLVE)
+  call timer_end(TIMER_DT_EVOLVE)
   NVTX_END()
 
   return

@@ -160,7 +160,7 @@ contains
     use Global_Variables
     use omp_lib
     use opt_variables
-    use timelog
+    use timer
     implicit none
     complex(8),intent(in) :: zutmp(NL, NBoccmax,NK_s:NK_e)
     real(8),intent(in)    :: IaLxyz
