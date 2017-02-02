@@ -65,8 +65,8 @@ subroutine hamiltonian(flag_current)
     call hpsi_acc_KB_RT_LBLK(ztpsi(:,:,3),ztpsi(:,:,4), ikb_s,ikb_e)
     call update(zfac,ztpsi(:,:,:),zu(:,:,:), ikb_s,ikb_e)
 
-#ifdef ARTED_CURRENT_OPTIMIZED
-    if(flag_current) call current_acc_KB_ST_LBLK(zu(:,:,:), ikb_s,ikb_e)
+#ifdef ARTED_CURRENT_PREPROCESSING
+    if(flag_current) call current_RT_preconditioner_LBLK(zu(:,:,:), ikb_s,ikb_e)
 #endif
   end do
 !$acc end data

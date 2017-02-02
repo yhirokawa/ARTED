@@ -25,7 +25,7 @@
 #define NVTX_END()
 #endif
 
-Subroutine dt_evolve_omp_KB(iter)
+Subroutine dt_evolve(iter)
   use Global_Variables
   use timer
 #ifdef ARTED_USE_NVTX
@@ -38,13 +38,13 @@ Subroutine dt_evolve_omp_KB(iter)
   real(8)    :: kr
   integer    :: thr_id,omp_get_thread_num,ikb
 
-  NVTX_BEG('dt_evolve_omp_KB()',1)
+  NVTX_BEG('dt_evolve()',1)
   call timer_begin(TIMER_DT_EVOLVE)
 
 !$acc data pcopy(zu, vloc) pcopyout(ekr_omp)
 
 !Constructing nonlocal part
-  NVTX_BEG('dt_evolve_omp_KB(): nonlocal part',2)
+  NVTX_BEG('dt_evolve(): nonlocal part',2)
 #ifdef _OPENACC
 !$acc kernels pcopy(ekr_omp) pcopyin(Mps, Jxyz,Jxx,Jyy,Jzz, kAc, Lx,Ly,Lz)
 !$acc loop collapse(2) independent gang
@@ -110,7 +110,7 @@ Subroutine dt_evolve_omp_KB(iter)
   end if
 
   if (Longi_Trans == 'Lo') then 
-    call current_KB_RT
+    call current_RT
     javt(iter,:)=jav(:)
     Ac_ind(iter+1,:)=2*Ac_ind(iter,:)-Ac_ind(iter-1,:)-4*Pi*javt(iter,:)*dt**2
     if (Sym /= 1) then
@@ -137,20 +137,20 @@ Subroutine dt_evolve_omp_KB(iter)
   end select
 ! yabana
 
-  NVTX_BEG('dt_evolve_omp_KB(): hamiltonian',3)
+  NVTX_BEG('dt_evolve(): hamiltonian',3)
   call hamiltonian(.true.)
   NVTX_END()
 
-  NVTX_BEG('dt_evolve_omp_KB(): psi_rho_RT',4)
+  NVTX_BEG('dt_evolve(): psi_rho_RT',4)
   call psi_rho_RT
   NVTX_END()
 
-  NVTX_BEG('dt_evolve_omp_KB(): Hartree',5)
+  NVTX_BEG('dt_evolve(): Hartree',5)
   call Hartree
   NVTX_END()
 
 ! yabana
-  NVTX_BEG('dt_evolve_omp_KB(): Exc_Cor',6)
+  NVTX_BEG('dt_evolve(): Exc_Cor',6)
   call Exc_Cor('RT')
   NVTX_END()
 ! yabana
@@ -176,7 +176,7 @@ Subroutine dt_evolve_omp_KB(iter)
   NVTX_END()
 
   return
-End Subroutine dt_evolve_omp_KB
+End Subroutine dt_evolve
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
 !***If you created the ETRS propagator for multi-scale mode, please remove following directive.
 #ifdef ARTED_SC
@@ -360,7 +360,7 @@ End Subroutine dt_evolve_etrs_omp_KB
 !***If you created the ETRS propagator for multi-scale mode, please remove following directive.
 #endif
 !--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120--------130
-Subroutine dt_evolve_omp_KB_MS
+Subroutine dt_evolve_MS
   use Global_Variables
   use timer
   use nvtx
@@ -371,13 +371,13 @@ Subroutine dt_evolve_omp_KB_MS
   real(8)    :: kr
   integer    :: thr_id,omp_get_thread_num,ikb
 
-  NVTX_BEG('dt_evolve_omp_KB_MS()',1)
+  NVTX_BEG('dt_evolve_MS()',1)
   call timer_begin(TIMER_DT_EVOLVE)
 
 !$acc data pcopy(zu, vloc) pcopyout(ekr_omp)
 
 !Constructing nonlocal part ! sato
-  NVTX_BEG('dt_evolve_omp_KB_MS(): nonlocal part',2)
+  NVTX_BEG('dt_evolve_MS(): nonlocal part',2)
 #ifdef _OPENACC
 !$acc kernels pcopy(ekr_omp) pcopyin(Mps, Jxyz,Jxx,Jyy,Jzz, kAc, Lx,Ly,Lz)
 !$acc loop collapse(2) independent gang
@@ -450,20 +450,20 @@ Subroutine dt_evolve_omp_KB_MS
   end select
 ! yabana
 
-  NVTX_BEG('dt_evolve_omp_KB_MS(): hamiltonian',3)
+  NVTX_BEG('dt_evolve_MS(): hamiltonian',3)
   call hamiltonian(.true.)
   NVTX_END()
 
-  NVTX_BEG('dt_evolve_omp_KB_MS(): psi_rho_RT',4)
+  NVTX_BEG('dt_evolve_MS(): psi_rho_RT',4)
   call psi_rho_RT
   NVTX_END()
 
-  NVTX_BEG('dt_evolve_omp_KB_MS(): Hartree',5)
+  NVTX_BEG('dt_evolve_MS(): Hartree',5)
   call Hartree
   NVTX_END()
 
 ! yabana
-  NVTX_BEG('dt_evolve_omp_KB_MS(): Hartree',5)
+  NVTX_BEG('dt_evolve_MS(): Hartree',5)
   call Exc_Cor('RT')
   NVTX_END()
 ! yabana
@@ -484,4 +484,4 @@ Subroutine dt_evolve_omp_KB_MS
   NVTX_END()
 
   return
-End Subroutine dt_evolve_omp_KB_MS
+End Subroutine dt_evolve_MS

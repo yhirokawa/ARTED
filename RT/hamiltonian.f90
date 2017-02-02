@@ -63,8 +63,8 @@ subroutine hamiltonian(flag_current)
     call hpsi_omp_KB_RT(ik,ztpsi(:,3,tid),ztpsi(:,4,tid))
     call update(zfac,ztpsi(:,:,tid),zu(:,ib,ik))
 
-#ifdef ARTED_CURRENT_OPTIMIZED
-    if(flag_current) call current_KB_RT_ST(ib,ik,zu(:,ib,ik))
+#ifdef ARTED_CURRENT_PREPROCESSING
+    if(flag_current) call current_RT_preconditioner(ib,ik,zu(:,ib,ik))
 #endif
   end do
 !$omp end do

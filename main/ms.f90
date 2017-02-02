@@ -155,7 +155,7 @@ Program main
     call Total_Energy_omp(Rion_update,'GS')
     call Ion_Force_omp(Rion_update,'GS')
     call sp_energy_omp
-    call current_KB_GS
+    call current_GS
     Eall_GS(iter)=Eall
     esp_var_ave(iter)=sum(esp_var(:,:))/(NK*Nelec/2)
     esp_var_max(iter)=maxval(esp_var(:,:))
@@ -354,10 +354,10 @@ Program main
       call timer_end(TIMER_OTHER)
       
 #ifdef ARTED_USE_OLD_PROPAGATOR
-      call dt_evolve_omp_KB_MS
+      call dt_evolve_MS
 #else
       !call dt_evolve_etrs_omp_KB_MS
-      call dt_evolve_omp_KB_MS
+      call dt_evolve_MS
 #endif
 
       call timer_begin(TIMER_OTHER)
@@ -376,7 +376,7 @@ Program main
 ! sato ---------------------------------------
       call timer_end(TIMER_OTHER)
 
-      call current_KB_RT
+      call current_RT
 
       call timer_begin(TIMER_OTHER)
 ! sato ---------------------------------------

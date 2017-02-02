@@ -26,8 +26,8 @@
 #define NVTX_END()
 #endif
 
-#ifdef ARTED_CURRENT_OPTIMIZED
-subroutine current_acc_KB_ST_LBLK(A, ikb_s,ikb_e)
+#ifdef ARTED_CURRENT_PREPROCESSING
+subroutine current_RT_preconditioner_LBLK(A, ikb_s,ikb_e)
   use Global_Variables
   use opt_variables
   implicit none
@@ -38,7 +38,7 @@ subroutine current_acc_KB_ST_LBLK(A, ikb_s,ikb_e)
 end subroutine
 #endif
 
-subroutine current_acc_KB_impl(zutmp,jxs,jys,jzs)
+subroutine current_acc_impl(zutmp,jxs,jys,jzs)
   use Global_Variables
   use opt_variables
   implicit none
@@ -81,7 +81,7 @@ subroutine current_acc_KB_impl(zutmp,jxs,jys,jzs)
     ikb_e = ikb0 + num_ikb1-1
 
     call init(zutmp(:,:,:), jx(:),jy(:),jz(:), ikb_s,ikb_e)
-#ifndef ARTED_CURRENT_OPTIMIZED
+#ifndef ARTED_CURRENT_PREPROCESSING
     call current_stencil_LBLK(zutmp(:,:,:), ikb_s,ikb_e)
 #endif
     call stencil(jx(:),jy(:),jz(:), ikb_s,ikb_e)

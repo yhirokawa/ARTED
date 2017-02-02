@@ -26,8 +26,8 @@
 #endif
 
 
-#ifdef ARTED_CURRENT_OPTIMIZED
-subroutine current_KB_RT_ST(ib,ik,A)
+#ifdef ARTED_CURRENT_PREPROCESSING
+subroutine current_RT_preconditioner(ib,ik,A)
   use Global_Variables
   use opt_variables
   implicit none
@@ -50,22 +50,22 @@ subroutine current_KB_RT_ST(ib,ik,A)
 end subroutine
 #endif
 
-subroutine current0_omp_KB
+subroutine current0
   implicit none
-  call current_KB('ZE')
+  call current('ZE')
 end subroutine
 
-subroutine current_KB_GS
+subroutine current_GS
   implicit none
-  call current_KB('GS')
+  call current('GS')
 end subroutine
 
-subroutine current_KB_RT
+subroutine current_RT
   implicit none
-  call current_KB('RT')
+  call current('RT')
 end subroutine
 
-subroutine current_KB(mode)
+subroutine current(mode)
   use Global_Variables, only: NB,NBoccmax,zu_GS,zu
   use timer
 #ifdef ARTED_USE_NVTX
@@ -75,7 +75,7 @@ subroutine current_KB(mode)
   character(2), intent(in) :: mode
   real(8) :: jx,jy,jz
 
-  NVTX_BEG('current_KB_RT()',2)
+  NVTX_BEG('current_RT()',2)
   call timer_begin(TIMER_CURRENT)
   if (mode == 'ZE') then
     call impl(mode,NBoccmax,zu,jx,jy,jz)
@@ -83,7 +83,7 @@ subroutine current_KB(mode)
     call impl(mode,NB,zu_GS,jx,jy,jz)
   else if (mode == 'RT') then
 #ifdef _OPENACC
-    call current_acc_KB_impl(zu,jx,jy,jz)
+    call current_acc_impl(zu,jx,jy,jz)
 #else
     call impl(mode,NBoccmax,zu,jx,jy,jz)
 #endif
@@ -153,7 +153,7 @@ contains
         ib=ib_table(ikb)
 
         call init(ik,ib,zutmp(:,ib,ik),jx,jy,jz)
-#ifdef ARTED_CURRENT_OPTIMIZED
+#ifdef ARTED_CURRENT_PREPROCESSING
         call preconditioned_stencil(ik,ib,jx,jy,jz)
 #else
         call stencil(ik,ib,zutmp(:,ib,ik),nabt,jx,jy,jz)
@@ -210,7 +210,7 @@ contains
     jz=jz+jzt*occ(ib,ik)
   end subroutine
 
-#ifdef ARTED_CURRENT_OPTIMIZED
+#ifdef ARTED_CURRENT_PREPROCESSING
   subroutine preconditioned_stencil(ik,ib,jx,jy,jz)
     use Global_Variables
     use opt_variables

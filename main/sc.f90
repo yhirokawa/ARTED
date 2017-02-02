@@ -155,7 +155,7 @@ Program main
     call Total_Energy_omp(Rion_update,'GS')
     call Ion_Force_omp(Rion_update,'GS')
     call sp_energy_omp
-    call current_KB_GS
+    call current_GS
     Eall_GS(iter)=Eall
     esp_var_ave(iter)=sum(esp_var(:,:))/(NK*Nelec/2)
     esp_var_max(iter)=maxval(esp_var(:,:))
@@ -264,7 +264,7 @@ Program main
   do ixyz=1,3
     kAc(:,ixyz)=kAc0(:,ixyz)+Ac_tot(iter,ixyz)
   enddo
-  call current0_omp_KB
+  call current0
   javt(0,:)=jav(:)
 
   Vloc_old(:,1) = Vloc(:); Vloc_old(:,2) = Vloc(:)
@@ -328,11 +328,11 @@ Program main
 !$acc update device(kAc)
 
 #ifdef ARTED_USE_OLD_PROPAGATOR
-    call dt_evolve_omp_KB(iter)
+    call dt_evolve(iter)
 #else
     call dt_evolve_etrs_omp_KB(iter)
 #endif
-    call current_KB_RT
+    call current_RT
 
     javt(iter+1,:)=jav(:)
     if (MD_option == 'Y') then
