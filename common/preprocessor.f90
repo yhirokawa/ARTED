@@ -26,8 +26,17 @@ subroutine print_optimize_message
 #ifdef ARTED_USE_PAPI
   print *, '  ARTED_USE_PAPI'
 #endif
+#ifdef ARTED_USE_NVTX
+  print *, '  ARTED_USE_NVTX'
+#endif
 #ifdef ARTED_CURRENT_PREPROCESSING
   print *, '  ARTED_CURRENT_PREPROCESSING'
+#endif
+#ifdef ARTED_REDUCE_FOR_MANYCORE
+  print *, '  ARTED_REDUCE_FOR_MANYCORE'
+#endif
+#ifdef ARTED_LBLK
+  print *, '  ARTED_LBLK'
 #endif
 #ifdef ARTED_STENCIL_ORIGIN
   print *, '  ARTED_STENCIL_ORIGIN'
@@ -49,6 +58,12 @@ subroutine print_optimize_message
 #endif
 #ifdef ARTED_ENABLE_SOFTWARE_PREFETCH
   print *, '  ARTED_ENABLE_SOFTWARE_PREFETCH'
+#endif
+#ifdef ARTED_STENCIL_PADDING
+  print *, '  ARTED_STENCIL_PADDING'
+#endif
+#ifdef ARTED_STENCIL_ENABLE_LOOP_BLOCKING
+  print *, '  ARTED_STENCIL_ENABLE_LOOP_BLOCKING'
 #endif
 #ifdef ARTED_USE_OLD_PROPAGATOR
   print *, '  ARTED_USE_OLD_PROPAGATOR'

@@ -47,12 +47,12 @@ subroutine stencil_perf_check(NLx_, NLy_, NLz_, NK_, NB_, Nt_)
   call wrap_init
   call timer_initialize
 
-  call dt_evolve_hpsi
+  call hamiltonian
 
   call timer_reset
   tbeg = omp_get_wtime()
   do t=0,Nt
-    call dt_evolve_hpsi
+    call hamiltonian
   end do
   tend = omp_get_wtime()
 
