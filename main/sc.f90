@@ -303,7 +303,6 @@ Program main
 !$acc enter data create(kAc)
 
   call timer_reset
-  call timer_enable_verbose
 #ifdef ARTED_USE_PAPI
   call papi_begin
 #endif
@@ -464,7 +463,6 @@ Program main
   call papi_end
 #endif
   call timer_set(TIMER_DYNAMICS, etime2 - etime1)
-  call timer_disable_verbose
 
   if(comm_is_root()) then
 #ifdef ARTED_USE_PAPI
