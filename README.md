@@ -45,9 +45,12 @@ CMake detects the following configurations automatically,
 - MPI Fortran/C compiler
 - OpenMP compile flag
 - LAPACK(/BLAS) libraries
+- CUDA SDK (for OpenACC)
 
-CMake software version **must** be 2.8 or later.
-We recommend *3.0* or later versions.
+CMake software version **must** be 3.0 or later.
+We recommend latest version.
+
+If you don't have the tool, please contact your system administrator or [install it yourself](https://cmake.org/install/).
 
 ### for your computer
 
