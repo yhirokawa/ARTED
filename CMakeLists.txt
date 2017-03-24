@@ -99,6 +99,7 @@ set(COMMON_LIB    common)
 set(STENCIL_LIB   stencil)
 set(FDTD_LIB      FDTD)
 set(PERFCHECK_EXT perfcheck)
+set(UTIL_EXT      util)
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR})
 
@@ -144,6 +145,7 @@ add_subdirectory(${RT_LIB})
 add_subdirectory(${COMMON_LIB})
 add_subdirectory(${STENCIL_LIB})
 add_subdirectory(${PERFCHECK_EXT})
+add_subdirectory(${UTIL_EXT})
 add_executable(${TARGET_NAME} main/${BUILD_TARGET}.f90)
 
 add_dependencies(${TARGET_NAME} ${MODULE_LIB} ${STENCIL_LIB})

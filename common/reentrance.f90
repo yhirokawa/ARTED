@@ -15,9 +15,7 @@
 !
 subroutine prep_backup_values(is_backup)
   use global_variables
-  use timer,           only: timer_reentrance_read, timer_reentrance_write
   use opt_variables,   only: opt_vars_initialize_p1, opt_vars_initialize_p2
-  use backup_routines, only: backup_value
   use misc_routines,   only: get_wtime
   use communication
   implicit none
@@ -67,6 +65,182 @@ subroutine prep_backup_values(is_backup)
     write (process_directory,'(A,A,I5.5,A)') trim(directory),'/work_p',procid(1),'/'
     open(iounit, status='old', form='unformatted', file=gen_filename(dump_filename, procid(1)))
   end if
+
+  call prep_backup_list(is_backup, iounit)
+
+  close(iounit)
+
+! initialize
+  if (.not. is_backup) then
+    call comm_set_level2_group(macRANK, kRANK)
+    call opt_vars_initialize_p1
+    call opt_vars_initialize_p2
+
+#ifdef ARTED_MS
+  ! continuous execution (is available only multi-scale mode)
+    if (gNt /= Nt) then
+      if (comm_is_root()) then
+        print '(A,I7,A,I7)', '*** [Nt is updated] start continuous execution:',Nt,' to ',gNt
+      end if
+      Nt                 = gNt
+      Ndata_out          = Nt / Nstep_write
+      Ndata_out_per_proc = Ndata_out / nprocs(1)
+      call resize_arrays
+    end if
+#endif
+  end if
+
+  call comm_sync_all; end_time = get_wtime()
+
+  if (comm_is_root()) then
+    if (is_backup) then
+      write(*,*) 'Backup time =',end_time-beg_time,' sec'
+    else
+      write(*,*) 'Restore time =',end_time-beg_time,' sec'
+    end if
+  end if
+
+contains
+  function gen_filename(base, procid)
+    use global_variables, only: directory, process_directory
+    implicit none
+    character(*), intent(in)      :: base
+    integer, intent(in), optional :: procid
+    character(128)                :: gen_filename
+    character(32) :: cMyrank
+    if (present(procid)) then
+      write(cMyrank,'(I5.5)') procid
+      gen_filename = trim(process_directory)//trim(base)//'.p'//trim(cMyrank)
+    else
+      gen_filename = trim(directory)//trim(base)
+    end if
+  end function
+
+  ! TODO: An array resizing subroutine should be provided.
+  subroutine resize_arrays
+    implicit none
+    real(8), allocatable :: tmp2(:,:),tmp3(:,:,:),tmp4(:,:,:,:)
+    integer :: mt
+
+    ! javt
+    mt = min(Nt, ubound(javt, 1))
+    allocate(tmp2(0:Nt,3))
+    tmp2(:,:) = 0.d0
+    tmp2(0:mt,:) = javt(0:mt,:)
+    deallocate(javt)
+    allocate(javt(0:Nt,3))
+    javt(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! E_ext
+    mt = min(Nt, ubound(E_ext, 1))
+    allocate(tmp2(0:Nt,3))
+    tmp2(:,:) = 0.d0
+    tmp2(0:mt,:) = E_ext(0:mt,:)
+    deallocate(E_ext)
+    allocate(E_ext(0:Nt,3))
+    E_ext(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! E_ind
+    mt = min(Nt, ubound(E_ind, 1))
+    allocate(tmp2(0:Nt,3))
+    tmp2(:,:) = 0.d0
+    tmp2(0:mt,:) = E_ind(0:mt,:)
+    deallocate(E_ind)
+    allocate(E_ind(0:Nt,3))
+    E_ind(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! E_tot
+    mt = min(Nt, ubound(E_tot, 1))
+    allocate(tmp2(0:Nt,3))
+    tmp2(:,:) = 0.d0
+    tmp2(0:mt,:) = E_tot(0:mt,:)
+    deallocate(E_tot)
+    allocate(E_tot(0:Nt,3))
+    E_tot(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! Ac_ext
+    mt = min(Nt+1, ubound(Ac_ind, 1))
+    allocate(tmp2(-1:Nt+1,3))
+    tmp2(:,:) = 0.d0
+    tmp2(-1:mt,:) = Ac_ext(-1:mt,:)
+    deallocate(Ac_ext)
+    allocate(Ac_ext(-1:Nt+1,3))
+    Ac_ext(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! Ac_ind
+    mt = min(Nt+1, ubound(Ac_ind, 1))
+    allocate(tmp2(-1:Nt+1,3))
+    tmp2(:,:) = 0.d0
+    tmp2(-1:mt,:) = Ac_ind(-1:mt,:)
+    deallocate(Ac_ind)
+    allocate(Ac_ind(-1:Nt+1,3))
+    Ac_ind(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! Ac_tot
+    mt = min(Nt+1, ubound(Ac_tot, 1))
+    allocate(tmp2(-1:Nt+1,3))
+    tmp2(:,:) = 0.d0
+    tmp2(-1:mt,:) = Ac_tot(-1:mt,:)
+    deallocate(Ac_tot)
+    allocate(Ac_tot(-1:Nt+1,3))
+    Ac_tot(:,:) = tmp2(:,:)
+    deallocate(tmp2)
+
+    ! data_local_Ac
+    mt = min(Nt, ubound(data_local_Ac,3))
+    allocate(tmp3(3,NXY_s:NXY_e,0:Nt))
+    tmp3(:,:,:) = 0.d0
+    tmp3(:,:,0:mt) = data_local_Ac(:,:,0:mt)
+    deallocate(data_local_Ac)
+    allocate(data_local_Ac(3,NXY_s:NXY_e,0:Nt))
+    data_local_Ac(:,:,:) = tmp3(:,:,:)
+    deallocate(tmp3)
+
+    ! data_local_jm
+    mt = min(Nt, ubound(data_local_jm,3))
+    allocate(tmp3(3,NXY_s:NXY_e,0:Nt))
+    tmp3(:,:,:) = 0.d0
+    tmp3(:,:,0:mt) = data_local_jm(:,:,0:mt)
+    deallocate(data_local_jm)
+    allocate(data_local_jm(3,NXY_s:NXY_e,0:Nt))
+    data_local_jm(:,:,:) = tmp3(:,:,:)
+    deallocate(tmp3)
+
+    ! data_vac_Ac
+    mt = min(Nt, ubound(data_vac_Ac,3))
+    allocate(tmp3(3,2,0:Nt))
+    tmp3(:,:,:) = 0.d0
+    tmp3(:,:,0:mt) = data_vac_Ac(:,:,0:mt)
+    deallocate(data_vac_Ac)
+    allocate(data_vac_Ac(3,2,0:Nt))
+    data_vac_Ac(:,:,:) = tmp3
+    deallocate(tmp3)
+
+    ! data_out
+    mt = min(Ndata_out_per_proc, ubound(data_out, 4))
+    allocate(tmp4(16,NXvacL_m:NXvacR_m,NY_m+1,0:Ndata_out_per_proc))
+    tmp4(:,:,:,:) = 0.d0
+    tmp4(:,:,:,0:mt) = data_out(:,:,:,0:mt)
+    deallocate(data_out)
+    allocate(data_out(16,NXvacL_m:NXvacR_m,NY_m+1,0:Ndata_out_per_proc))
+    data_out(:,:,:,:) = tmp4(:,:,:,:)
+    deallocate(tmp4)
+  end subroutine
+end subroutine
+
+subroutine prep_backup_list(is_backup, iounit)
+  use global_variables
+  use timer,           only: timer_reentrance_read, timer_reentrance_write
+  use backup_routines, only: backup_value
+  implicit none
+  logical, intent(in) :: is_backup
+  integer, intent(in) :: iounit
 
 !============= backup values ==============
 #define BACKUP(TARGET_VAR) call backup_value(is_backup, iounit, TARGET_VAR)
@@ -426,170 +600,6 @@ subroutine prep_backup_values(is_backup)
     call timer_reentrance_read(iounit)
   end if
 !============= backup values ==============
-  close(iounit)
-
-! initialize
-  if (.not. is_backup) then
-    call comm_set_level2_group(macRANK, kRANK)
-    call opt_vars_initialize_p1
-    call opt_vars_initialize_p2
-
-#ifdef ARTED_MS
-  ! continuous execution (is available only multi-scale mode)
-    if (gNt /= Nt) then
-      if (comm_is_root()) then
-        print '(A,I7,A,I7)', '*** [Nt is updated] start continuous execution:',Nt,' to ',gNt
-      end if
-      Nt                 = gNt
-      Ndata_out          = Nt / Nstep_write
-      Ndata_out_per_proc = Ndata_out / nprocs(1)
-      call resize_arrays
-    end if
-#endif
-  end if
-
-  call comm_sync_all; end_time = get_wtime()
-
-  if (comm_is_root()) then
-    if (is_backup) then
-      write(*,*) 'Backup time =',end_time-beg_time,' sec'
-    else
-      write(*,*) 'Restore time =',end_time-beg_time,' sec'
-    end if
-  end if
-
-contains
-  function gen_filename(base, procid)
-    use global_variables, only: directory, process_directory
-    implicit none
-    character(*), intent(in)      :: base
-    integer, intent(in), optional :: procid
-    character(128)                :: gen_filename
-    character(32) :: cMyrank
-    if (present(procid)) then
-      write(cMyrank,'(I5.5)') procid
-      gen_filename = trim(process_directory)//trim(base)//'.p'//trim(cMyrank)
-    else
-      gen_filename = trim(directory)//trim(base)
-    end if
-  end function
-
-  ! TODO: An array resizing subroutine should be provided.
-  subroutine resize_arrays
-    implicit none
-    real(8), allocatable :: tmp2(:,:),tmp3(:,:,:),tmp4(:,:,:,:)
-    integer :: mt
-
-    ! javt
-    mt = min(Nt, ubound(javt, 1))
-    allocate(tmp2(0:Nt,3))
-    tmp2(:,:) = 0.d0
-    tmp2(0:mt,:) = javt(0:mt,:)
-    deallocate(javt)
-    allocate(javt(0:Nt,3))
-    javt(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! E_ext
-    mt = min(Nt, ubound(E_ext, 1))
-    allocate(tmp2(0:Nt,3))
-    tmp2(:,:) = 0.d0
-    tmp2(0:mt,:) = E_ext(0:mt,:)
-    deallocate(E_ext)
-    allocate(E_ext(0:Nt,3))
-    E_ext(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! E_ind
-    mt = min(Nt, ubound(E_ind, 1))
-    allocate(tmp2(0:Nt,3))
-    tmp2(:,:) = 0.d0
-    tmp2(0:mt,:) = E_ind(0:mt,:)
-    deallocate(E_ind)
-    allocate(E_ind(0:Nt,3))
-    E_ind(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! E_tot
-    mt = min(Nt, ubound(E_tot, 1))
-    allocate(tmp2(0:Nt,3))
-    tmp2(:,:) = 0.d0
-    tmp2(0:mt,:) = E_tot(0:mt,:)
-    deallocate(E_tot)
-    allocate(E_tot(0:Nt,3))
-    E_tot(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! Ac_ext
-    mt = min(Nt+1, ubound(Ac_ind, 1))
-    allocate(tmp2(-1:Nt+1,3))
-    tmp2(:,:) = 0.d0
-    tmp2(-1:mt,:) = Ac_ext(-1:mt,:)
-    deallocate(Ac_ext)
-    allocate(Ac_ext(-1:Nt+1,3))
-    Ac_ext(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! Ac_ind
-    mt = min(Nt+1, ubound(Ac_ind, 1))
-    allocate(tmp2(-1:Nt+1,3))
-    tmp2(:,:) = 0.d0
-    tmp2(-1:mt,:) = Ac_ind(-1:mt,:)
-    deallocate(Ac_ind)
-    allocate(Ac_ind(-1:Nt+1,3))
-    Ac_ind(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! Ac_tot
-    mt = min(Nt+1, ubound(Ac_tot, 1))
-    allocate(tmp2(-1:Nt+1,3))
-    tmp2(:,:) = 0.d0
-    tmp2(-1:mt,:) = Ac_tot(-1:mt,:)
-    deallocate(Ac_tot)
-    allocate(Ac_tot(-1:Nt+1,3))
-    Ac_tot(:,:) = tmp2(:,:)
-    deallocate(tmp2)
-
-    ! data_local_Ac
-    mt = min(Nt, ubound(data_local_Ac,3))
-    allocate(tmp3(3,NXY_s:NXY_e,0:Nt))
-    tmp3(:,:,:) = 0.d0
-    tmp3(:,:,0:mt) = data_local_Ac(:,:,0:mt)
-    deallocate(data_local_Ac)
-    allocate(data_local_Ac(3,NXY_s:NXY_e,0:Nt))
-    data_local_Ac(:,:,:) = tmp3(:,:,:)
-    deallocate(tmp3)
-
-    ! data_local_jm
-    mt = min(Nt, ubound(data_local_jm,3))
-    allocate(tmp3(3,NXY_s:NXY_e,0:Nt))
-    tmp3(:,:,:) = 0.d0
-    tmp3(:,:,0:mt) = data_local_jm(:,:,0:mt)
-    deallocate(data_local_jm)
-    allocate(data_local_jm(3,NXY_s:NXY_e,0:Nt))
-    data_local_jm(:,:,:) = tmp3(:,:,:)
-    deallocate(tmp3)
-
-    ! data_vac_Ac
-    mt = min(Nt, ubound(data_vac_Ac,3))
-    allocate(tmp3(3,2,0:Nt))
-    tmp3(:,:,:) = 0.d0
-    tmp3(:,:,0:mt) = data_vac_Ac(:,:,0:mt)
-    deallocate(data_vac_Ac)
-    allocate(data_vac_Ac(3,2,0:Nt))
-    data_vac_Ac(:,:,:) = tmp3
-    deallocate(tmp3)
-
-    ! data_out
-    mt = min(Ndata_out_per_proc, ubound(data_out, 4))
-    allocate(tmp4(16,NXvacL_m:NXvacR_m,NY_m+1,0:Ndata_out_per_proc))
-    tmp4(:,:,:,:) = 0.d0
-    tmp4(:,:,:,0:mt) = data_out(:,:,:,0:mt)
-    deallocate(data_out)
-    allocate(data_out(16,NXvacL_m:NXvacR_m,NY_m+1,0:Ndata_out_per_proc))
-    data_out(:,:,:,:) = tmp4(:,:,:,:)
-    deallocate(tmp4)
-  end subroutine
 end subroutine
 
 subroutine prep_Reentrance_Read
