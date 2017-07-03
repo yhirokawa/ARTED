@@ -1,0 +1,4 @@
+!.gitignore
+!*.inp
+!*_rps.dat
+!*.sh
