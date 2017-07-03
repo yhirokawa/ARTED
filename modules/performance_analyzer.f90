@@ -16,6 +16,7 @@
 module performance_analyzer
   implicit none
 
+  public  write_timer_log
   public  write_performance
   public  print_stencil_size
   public  get_hamiltonian_performance
@@ -85,6 +86,36 @@ contains
 #endif
       write (iounit,f)            'System(sum)    ', tgflops(4), tgflops(1), tgflops(2), tgflops(3)
     end if
+  end subroutine
+
+  subroutine write_timer_log(filename)
+    use global_variables
+    use communication
+    use timer
+    use misc_routines, only: gen_logfilename
+    implicit none
+    character(*),intent(in) :: filename
+
+    integer,parameter      :: iounit = 999
+    character(*),parameter :: f = "(A,F12.4)"
+
+    open(iounit, file=gen_logfilename(filename,procid(1)))
+
+    write (iounit,'(A,A12)') 'Function    ','time[sec]'
+    write (iounit,f)         'dt_evolve   ',timer_get(LOG_DT_EVOLVE)
+    write (iounit,f)         'hpsi        ',timer_get(LOG_HPSI)
+    write (iounit,f)         'psi_rho     ',timer_get(LOG_PSI_RHO)
+    write (iounit,f)         'hartree     ',timer_get(LOG_HARTREE)
+    write (iounit,f)         'current     ',timer_get(LOG_CURRENT)
+    write (iounit,f)         'total_energy',timer_get(LOG_TOTAL_ENERGY)
+    write (iounit,f)         'ion_force   ',timer_get(LOG_ION_FORCE)
+    write (iounit,f)         'dt_evolve_ac',timer_get(LOG_DT_EVOLVE_AC)
+    write (iounit,f)         'k_shift_wf  ',timer_get(LOG_K_SHIFT_WF)
+    write (iounit,f)         'other       ',timer_get(LOG_OTHER)
+    write (iounit,f)         'allreduce   ',timer_get(LOG_ALLREDUCE)
+    write (iounit,f)         'dynamics    ',timer_get(LOG_DYNAMICS)
+
+    close(iounit)
   end subroutine
 
   subroutine write_loadbalance(iounit)

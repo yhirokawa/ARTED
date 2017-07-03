@@ -565,6 +565,7 @@ Program main
     call timer_show_min ('Allreduce time     :', LOG_ALLREDUCE)
   end if
   call write_performance(trim(directory)//'ms_performance')
+  call write_timer_log(trim(directory)//'timer')
 
   if(comm_is_root(1)) write(*,*) 'This is the start of write section'
   call timer_begin(LOG_IO)

@@ -52,15 +52,20 @@ contains
 
   ! input  : base filename
   ! output : <base filename>_YYYYMMDD_hhmmss.log
-  function gen_logfilename(filename)
+  function gen_logfilename(filename,procid)
     implicit none
     character(100)          :: gen_logfilename
     character(*),intent(in) :: filename
+    integer,intent(in),optional :: procid
     character(8)  :: d
     character(10) :: t
     call date_and_time(date=d,time=t)
 
-    write (gen_logfilename,'(A)') filename//'_'//d//'_'//t(1:6)//'.log'
+    if (present(procid)) then
+      write (gen_logfilename,'(A,I5.5,A)') filename//'_'//d//'_'//t(1:6)//'_p',procid,'.log'
+    else
+      write (gen_logfilename,'(A)') filename//'_'//d//'_'//t(1:6)//'.log'
+    end if
   end function
 
   function get_wtime()
