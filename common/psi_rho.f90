@@ -89,7 +89,64 @@ subroutine psi_rho_impl(zutmp,zu_NB)
 
 
 contains
-  subroutine reduce(tid,zfac,zutmp,zu_NB)
+  subroutine reduce_simple(zfac,zutmp,zu_NB,zrho_l)
+    use global_variables
+    use misc_routines, only: ceiling_pow2
+    use omp_lib, only: omp_get_thread_num
+    implicit none
+    real(8),intent(in)    :: zfac
+    integer,intent(in)    :: zu_NB
+    complex(8),intent(in) :: zutmp(0:NL-1,zu_NB,NK_s:NK_e)
+    real(8),intent(out)   :: zrho_l(0:NL-1)
+
+    integer :: ib,ik,i
+
+    zrho_l(:)=0.d0
+
+    do ik=NK_s,NK_e
+    do ib=1,NBoccmax
+!$omp parallel do default(none) &
+!$omp             private(i) &
+!$omp             firstprivate(ik,ib,zfac,NL) &
+!$omp             shared(occ,zutmp,zrho_l)
+    do i=0,NL-1
+      zrho_l(i)=zrho_l(i)+(zfac*occ(ib,ik))*abs(zutmp(i,ib,ik))**2
+    end do
+!$omp end parallel do
+    end do
+    end do
+  end subroutine
+
+  subroutine reduce_modify(zfac,zutmp,zu_NB,zrho_l)
+    use global_variables
+    use misc_routines, only: ceiling_pow2
+    use omp_lib, only: omp_get_thread_num
+    implicit none
+    real(8),intent(in)    :: zfac
+    integer,intent(in)    :: zu_NB
+    complex(8),intent(in) :: zutmp(0:NL-1,zu_NB,NK_s:NK_e)
+    real(8),intent(out)   :: zrho_l(0:NL-1)
+
+    integer :: ib,ik,i
+
+    zrho_l(:)=0.d0
+
+!$omp parallel do default(none) collapse(2) &
+!$omp             private(ik,ib,i) &
+!$omp             firstprivate(zfac,NL,NK_s,NK_e,NBoccmax) &
+!$omp             shared(occ,zutmp) &
+!$omp             reduction(+:zrho_l)
+    do ik=NK_s,NK_e
+    do ib=1,NBoccmax
+    do i=0,NL-1
+      zrho_l(i)=zrho_l(i)+(zfac*occ(ib,ik))*abs(zutmp(i,ib,ik))**2
+    end do
+    end do
+    end do
+!$omp end parallel do
+  end subroutine
+
+  subroutine reduce_manual(tid,zfac,zutmp,zu_NB)
     use global_variables
     use opt_variables, only: zrhotmp
     use misc_routines, only: ceiling_pow2
@@ -102,9 +159,7 @@ contains
 
     integer :: ib,ik,i,mytid
 
-    mytid = tid
-
-#ifdef ARTED_REDUCE_FOR_MANYCORE
+    mytid=tid
     zrhotmp(:,mytid)=0.d0
 
 !$omp do private(ik,ib,i) collapse(2)
@@ -125,23 +180,43 @@ contains
       i = i/2
 !$omp barrier
     end do
-#else
-    mytid = 0
+  end subroutine
 
-!$omp single
-    zrhotmp(:,mytid) = 0.d0
-!$omp end single
+  subroutine reduce(tid,zfac,zutmp,zu_NB)
+    use global_variables
+    use opt_variables, only: zrhotmp
+    use misc_routines, only: ceiling_pow2
+    use omp_lib, only: omp_get_thread_num
+    implicit none
+    integer,intent(in)    :: tid
+    real(8),intent(in)    :: zfac
+    integer,intent(in)    :: zu_NB
+    complex(8),intent(in) :: zutmp(0:NL-1,zu_NB,NK_s:NK_e)
 
+    integer :: ib,ik,i,mytid
+
+    mytid=tid
+
+    zrhotmp(:,mytid)=0.d0
+
+!$omp do private(ik,ib,i) collapse(2)
     do ik=NK_s,NK_e
     do ib=1,NBoccmax
-!$omp do private(i)
     do i=0,NL-1
       zrhotmp(i,mytid)=zrhotmp(i,mytid)+(zfac*occ(ib,ik))*abs(zutmp(i,ib,ik))**2
     end do
+    end do
+    end do
 !$omp end do
+
+    i = ceiling_pow2(NUMBER_THREADS)/2
+    do while(i > 0)
+      if(mytid < i) then
+        zrhotmp(0:NL-1,mytid) = zrhotmp(0:NL-1,mytid) + zrhotmp(0:NL-1,mytid + i)
+      end if
+      i = i/2
+!$omp barrier
     end do
-    end do
-#endif
   end subroutine
 
   subroutine reduce_acc(zfac, zutmp, zu_NB, zrho)
@@ -193,12 +268,27 @@ contains
 #ifdef _OPENACC
     call reduce_acc(1.0d0,zutmp,zu_NB,zrho_l)
 #else
+
+#define REDUCE_SIMPLE
+!#define REDUCE_MODIFY
+!#define REDUCE_MANUAL
+
+#ifdef REDUCE_SIMPLE
+  call reduce_simple(1.0d0,zutmp,zu_NB,zrho_l)
+#endif
+
+#ifdef REDUCE_MODIFY
+  call reduce_modify(1.0d0,zutmp,zu_NB,zrho_l)
+#endif
+
+#ifdef REDUCE_MANUAL
 !$omp parallel private(tid)
 !$  tid=omp_get_thread_num()
     call reduce(tid,1.0d0,zutmp,zu_NB)
 !$omp end parallel
-
     zrho_l(:) = zrhotmp(0:NL-1,0)
+#endif
+
 #endif
 
     NVTX_END()
